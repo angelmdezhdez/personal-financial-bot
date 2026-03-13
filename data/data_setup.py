@@ -1,69 +1,81 @@
 import sqlite3
 import csv
-import random
+import datetime as dt
 
 def create_csv_data():
-    prices = [[1200, 1500, 1600, 1700], [300, 350, 400, 450], [150, 180, 200, 220], [200, 250, 300, 350]]
-    products = ['Laptop', 'Monitor', 'Silla', 'Escritorio']
-    brands = ['Marca A', 'Marca B', 'Marca C', 'Marca D']
-    departments = ['Electrónica', 'Oficina', 'Hogar']
-
-    with open("data/products.csv", "w", newline="") as f:
+    with open("data/gastos.csv", "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Nombre", "Marca", "Departamento", "Precio", "Stock"])
-        for i in range(len(products)):
-            for j in range(len(brands)):
-                for k in range(len(departments)):
-                    writer.writerow([f"{products[i]}", brands[j], departments[k], prices[i][j], random.randint(5, 20) + i + j + k])
+        writer.writerow(["Fecha", "Concepto", "Monto", "Medio"])
+        writer.writerow([dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Compra inicial", 0.0, "BBVA Crédito"])
 
-    clients = [
-                ('Ana Lopez', 'TechCorp', 'ana@techcorp.com', '555-0101'),
-                ('Carlos Ruiz', 'Soluciones Globales', 'carlos@sglobal.com', '555-0202'),
-                ('Carlos Slim', 'Telmex', 'carlos@telmex.com', '555-9999'), 
-                ('Maria Gomez', 'Innovación SA', 'maria@innovacion.mx', '555-0303'),
-                ('Luis Fernandez', 'TechCorp', 'luis@techcorp.com', '555-0404'),
-                ('Sofia Martinez', 'Soluciones Globales', 'sofia@sglobal.com', '555-0505'),
-                ('Jorge Ramirez', 'Telmex', 'jorge@telmex.com', '555-0606'),
-                ('Laura Sanchez', 'Innovación SA', 'laura@innovacion.mx', '555-0707'),
-                ('Pedro Gonzalez', 'TechCorp', 'pedro@techcorp.com', '555-0808'),
-                ('Lucia Torres', 'Soluciones Globales', 'lucia@sglobal.com', '555-0909'),
-                ('Diego Flores', 'Telmex', 'diego@telmex.com', '555-1010')
-    ]
-    with open("data/clients.csv", "w", newline="") as f:
+
+    with open("data/saldos.csv", "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Nombre", "Empresa", "Email", "Telefono"])
-        writer.writerows(clients)
-    print('Csv files "products.csv" and "clients.csv" created successfully.')
+        writer.writerow(["Nombre", "Saldo"])
+        writer.writerow(["BBVA Débito", 3000])
+        writer.writerow(["Nu Turbo", 25000])
+        writer.writerow(["Stori Inversion", 5000])
+        writer.writerow(["MP Ahorros", 9116])
+        writer.writerow(["MP Dentista", 2500])
+        writer.writerow(["MP Terapia", 900])
+        writer.writerow(["MP Gastos Fijos", 2240])
+
+    with open("data/presupuesto.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Monto"])
+        writer.writerow([400])
+
+    with open("data/deudas.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Medio", "Monto"])
+        writer.writerow(["BBVA Crédito", 0])
+        writer.writerow(["Nu Crédito", 0])
+        writer.writerow(["Stori Crédito", 0])
+        writer.writerow(["MP Crédito", 0])
 
 
-def configurar_base_datos(products_csv="data/products.csv", clients_csv="data/clients.csv"):
-    conn = sqlite3.connect("data/inventario.db")
+def configurar_base_datos(gastos_csv="data/gastos.csv", saldos_csv="data/saldos.csv", presupuesto_csv="data/presupuesto.csv"):
+    conn = sqlite3.connect("data/finanzas.db")
     cursor = conn.cursor()
 
-    productos = []
-    with open(products_csv, "r") as f:
+    gastos = []
+    with open(gastos_csv, "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            productos.append((row["Nombre"], row["Departamento"], float(row["Precio"]), int(row["Stock"])))
-    clientes = []
-    with open(clients_csv, "r") as f:
+            gastos.append((row["Fecha"], row["Concepto"], float(row["Monto"]), row["Medio"]))
+    saldos = []
+    with open(saldos_csv, "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            clientes.append((row["Nombre"], row["Empresa"], row["Email"], row["Telefono"]))
+            saldos.append((row["Nombre"], float(row["Saldo"])))
+    presupuesto = []
+    with open(presupuesto_csv, "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            presupuesto.append((float(row["Monto"]),))
     
-    cursor.execute('''CREATE TABLE IF NOT EXISTS productos 
-                      (id INTEGER PRIMARY KEY, nombre TEXT, categoria TEXT, precio REAL, stock INTEGER)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS gastos 
+                      (id INTEGER PRIMARY KEY, Fecha TEXT, Concepto TEXT, Monto REAL, Medio TEXT)''')
 
-    cursor.executemany('INSERT INTO productos (nombre, categoria, precio, stock) VALUES (?, ?, ?, ?)', productos)
+    cursor.executemany('INSERT INTO gastos (Fecha, Concepto, Monto, Medio) VALUES (?, ?, ?, ?)', gastos)
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS clientes 
-                      (id INTEGER PRIMARY KEY, nombre TEXT, empresa TEXT, email TEXT, telefono TEXT)''')
-
-    cursor.executemany('INSERT INTO clientes (nombre, empresa, email, telefono) VALUES (?, ?, ?, ?)', clientes)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS saldos 
+                      (id INTEGER PRIMARY KEY, Nombre TEXT, Saldo REAL)''')
     
+    cursor.executemany('INSERT INTO saldos (Nombre, Saldo) VALUES (?, ?)', saldos)
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS presupuesto 
+                      (id INTEGER PRIMARY KEY, Monto REAL)''')
+
+    cursor.executemany('INSERT INTO presupuesto (Monto) VALUES (?)', presupuesto)
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS deudas 
+                      (id INTEGER PRIMARY KEY, Medio TEXT, Monto REAL)''')
+    
+    cursor.executemany('INSERT INTO deudas (Medio, Monto) VALUES (?, ?)', [("BBVA Crédito", 0), ("Nu Crédito", 0), ("Stori Crédito", 0), ("MP Crédito", 0)])
     conn.commit()
     conn.close()
-    print("Database 'inventario.db' created and populated successfully.")
+    print("Database 'finanzas.db' created and populated successfully.")
 
 
 

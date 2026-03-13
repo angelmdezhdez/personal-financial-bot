@@ -142,3 +142,37 @@ def obtener_saldos() -> dict:
     
     except sqlite3.Error as e:
         return {"error": f"Error al obtener los saldos de la base de datos: {str(e)}"}
+    
+# ==========================================
+# Tool 5.
+# ==========================================
+@tool
+def actualizar_deuda(monto: float, medio: str) -> str:
+    """
+    Actualiza el monto de la deuda actual en la base de datos local.
+    Es útil para mantener un control actualizado de las deudas pendientes después de realizar pagos o incurrir en nuevas deudas.
+    
+    Args:
+        monto (float): El nuevo monto total de la deuda en dólares.
+        medio (str): El medio relacionado con la deuda (ej. 'Tarjeta de crédito', 'Préstamo personal').
+    """
+    
+    db_path = 'data/finanzas.db'
+    
+    if not os.path.exists(db_path):
+        return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        fecha_actual = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        cursor.execute("UPDATE deudas SET Monto = ? WHERE Medio = ?", (monto, medio))
+        
+        conn.commit()
+        conn.close()
+        
+        return f"Deuda actualizada exitosamente a ${monto} para {medio} el {fecha_actual}."
+    
+    except sqlite3.Error as e:
+        return f"Error al actualizar la deuda en la base de datos: {str(e)}"
