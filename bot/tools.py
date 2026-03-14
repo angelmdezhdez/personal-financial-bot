@@ -122,34 +122,56 @@ def registrar_gasto(concepto: str, monto: float, medio: str) -> str:
 def actualizar_saldos(nuevos_saldos: dict) -> str:
     """
     Actualiza los saldos de las cuentas en la base de datos local.
-    Útil para mantener un control actualizado de los fondos disponibles en cada cuenta.
-    
-    Args:
-        nuevos_saldos (dict): Un diccionario con el nombre de la cuenta como clave y el nuevo saldo como valor. 
-                              Ejemplo: {'Cuenta Ahorros': 1500.00, 'Cuenta Corriente': 500.00}
     """
-    
     db_path = 'data/finanzas.db'
-    
     if not os.path.exists(db_path):
-        return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
-    
+        return "Error: La base de datos no existe."
+
+    # Diccionario de palabras clave -> Nombre real en DB
+    mapeo_cuentas = {
+        "nu": "Nu Turbo", "turbo": "Nu Turbo",
+        "bbva": "BBVA Débito",
+        "stori": "Stori Inversion",
+        "ahorro": "MP Ahorros",
+        "dentista": "MP Dentista",
+        "terapia": "MP Terapia",
+        "gastos": "MP Gastos Fijos"
+    }
+
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         fecha_actual = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        for cuenta, saldo in nuevos_saldos.items():
-            cursor.execute("UPDATE saldos SET Saldo = ? WHERE Nombre = ?", (saldo, cuenta))
-        
+        cuentas_actualizadas = []
+
+        for cuenta_input, saldo in nuevos_saldos.items():
+            nombre_input_clean = cuenta_input.lower()
+            cuenta_real = None
+
+            # Buscamos si alguna palabra clave coincide
+            for clave, nombre_db in mapeo_cuentas.items():
+                if clave in nombre_input_clean:
+                    cuenta_real = nombre_db
+                    break 
+
+            if not cuenta_real:
+                return f"Error: No reconocí la cuenta '{cuenta_input}'. Intenta con nombres claros."
+
+            # IMPORTANTE: Usamos 'cuenta_real' en el WHERE
+            cursor.execute("UPDATE saldos SET Saldo = ? WHERE Nombre = ?", (saldo, cuenta_real))
+            
+            if cursor.rowcount == 0:
+                return f"Error: La cuenta '{cuenta_real}' no existe en la tabla 'saldos'."
+            
+            cuentas_actualizadas.append(cuenta_real)
+
         conn.commit()
         conn.close()
         
-        return "Saldos actualizados exitosamente en la base de datos el " + fecha_actual + "."
+        return f"Saldos actualizados ({', '.join(cuentas_actualizadas)}) el {fecha_actual}."
     
     except sqlite3.Error as e:
-        return f"Error al actualizar los saldos en la base de datos: {str(e)}"
-
+        return f"Error de base de datos: {str(e)}"
 
 # ==========================================
 # Tool 3.
