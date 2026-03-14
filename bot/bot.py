@@ -3,6 +3,7 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.prebuilt import ToolNode
 from datetime import datetime
+import os 
 
 # Importamos las herramientas que creamos en el paso anterior
 from bot.tools import (
@@ -28,7 +29,7 @@ tools = tools_compras + tools_saldos + tools_deudas
 
 # usamos este modelo de Google Gemini, que es un modelo de propósito general muy capaz para agentes conversacionales 
 # y que es rápido y económico. 
-llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3)
+llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 # "Conectamos" las herramientas al modelo. 
 llm_with_tools = llm.bind_tools(tools)
