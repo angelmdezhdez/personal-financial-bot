@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()  
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, START, END, MessagesState
@@ -29,7 +31,8 @@ tools = tools_compras + tools_saldos + tools_deudas
 
 # usamos este modelo de Google Gemini, que es un modelo de propósito general muy capaz para agentes conversacionales 
 # y que es rápido y económico. 
-llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
+api_key = os.getenv("GOOGLE_API_KEY")
+llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, google_api_key=api_key)
 
 # "Conectamos" las herramientas al modelo. 
 llm_with_tools = llm.bind_tools(tools)
