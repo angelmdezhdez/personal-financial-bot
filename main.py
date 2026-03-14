@@ -7,18 +7,20 @@ from telegram.ext import Application, MessageHandler, filters, ContextTypes
 from langchain_core.messages import HumanMessage
 load_dotenv()
 from bot.bot import graph  
+from bot.tools import reestablecer_presupuesto_semanal
+from datetime import time
 
 # Configuración de logs para ver qué pasa en AWS
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-#MI_TELEGRAM_ID = int(os.getenv("MI_TELEGRAM_ID", "0")) # Pon tu ID en el .env
+TELEGRAM_USER_ID = int(os.getenv("TELEGRAM_USER_ID"))
 
 async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
-    ## Bot privado
-    #if update.effective_user.id != MI_TELEGRAM_ID:
-    #    await update.message.reply_text("⛔ Acceso denegado. Este es un bot privado.")
-    #    return
+    # Bot privado
+    if update.effective_user.id != TELEGRAM_USER_ID:
+        await update.message.reply_text("⛔ Acceso denegado. Este es un bot privado.")
+        return
 
     user_input = update.message.text
     config = {"configurable": {"thread_id": str(update.effective_chat.id)}}
@@ -50,20 +52,32 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Error procesando mensaje: {e}")
         await update.message.reply_text(f"❌ Ocurrió un error: {str(e)}")
 
-def main():
+# Función que ejecutará el JobQueue
+async def callback_presupuesto(context: ContextTypes.DEFAULT_TYPE):
+    # Llamamos a tu función de tools
+    resultado = reestablecer_presupuesto_semanal(400.0)
+    logging.info(f"Tarea programada ejecutada: {resultado}")
 
+def main():
     if not TELEGRAM_BOT_TOKEN:
-        print("Error: No se encontró TELEGRAM_BOT_TOKEN")
         return
 
-    # Construir la aplicación (Solo una vez)
+    # 1. Construir la aplicación con JobQueue habilitado
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
-    # Añadir el manejador de mensajes de texto
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_mensaje))
+    # Crear horario
+    hora = time(hour=6, minute=5)
 
-    # Iniciar el bot (Polling)
-    print("🚀 Bot de Finanzas en marcha...")
+    # Programar el job
+    application.job_queue.run_daily(
+        callback_presupuesto,
+        time=hora,
+        days=(6,)   # domingo
+    )
+
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_mensaje))
+    
+    print("🚀 Bot con tareas programadas en marcha...")
     application.run_polling()
 
 if __name__ == "__main__":
@@ -71,3 +85,4 @@ if __name__ == "__main__":
         print("Error: Configura GOOGLE_API_KEY en tu .env")
     else:
         main()
+

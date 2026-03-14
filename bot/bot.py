@@ -10,7 +10,8 @@ from bot.tools import (
     actualizar_saldos,
     actualizar_presupuesto,
     obtener_saldos,
-    actualizar_deuda
+    actualizar_deuda,
+    obtener_deudas
 )
 
 # ==========================================
@@ -20,9 +21,10 @@ from bot.tools import (
 tools_compras = [registrar_gasto, actualizar_presupuesto, actualizar_deuda]
 TOOLS_COMPRAS_NAMES = [tool.name for tool in tools_compras]
 tools_saldos = [obtener_saldos, actualizar_saldos]
+tools_deudas = [obtener_deudas]
 
 # tools son herramientas "genéricas" que el agente puede usar
-tools = tools_compras + tools_saldos
+tools = tools_compras + tools_saldos + tools_deudas
 
 # usamos este modelo de Google Gemini, que es un modelo de propósito general muy capaz para agentes conversacionales 
 # y que es rápido y económico. 
@@ -35,7 +37,7 @@ llm_with_tools = llm.bind_tools(tools)
 # Definición de los Nodos del Grafo
 # ==========================================
 
-def chatbot_node(state: MessagesState):
+async def chatbot_node(state: MessagesState):
     """
     Este nodo es el 'Cerebro'. Toma el historial de mensajes actual, 
     le añade instrucciones de sistema y le pide al LLM que decida el siguiente paso.
@@ -50,7 +52,7 @@ def chatbot_node(state: MessagesState):
     ] + state["messages"]
     
     # invocamos al modelo con tools
-    response = llm_with_tools.invoke(mensajes)
+    response = await llm_with_tools.ainvoke(mensajes)
     
     # devolvemos la respuesta del modelo
     return {"messages": [response]}
@@ -59,7 +61,8 @@ def chatbot_node(state: MessagesState):
 tool_node = ToolNode(tools=tools_compras)
 # Nodo de herramientas de saldos y presupuesto
 saldos_tool_node = ToolNode(tools=tools_saldos)
-
+# Nodo de herramientas de deudas
+deudas_tool_node = ToolNode(tools=tools_deudas)
 # ==========================================
 # Definimos el flujo
 # ==========================================
@@ -70,6 +73,7 @@ def route_after_agent(state: MessagesState):
     - Si el LLM no pidió ninguna herramienta -> terminar (END).
     - Si se registró un gasto -> nodo "sql_tools".
     - Si pidió actualizar o saber saldos -> nodo "saldos".
+    - Si pidió obtener deudas -> nodo "deudas".
     """
     ultimo_mensaje = state["messages"][-1]
     herramientas_solicitadas = getattr(ultimo_mensaje, "tool_calls", None)
@@ -97,6 +101,7 @@ workflow = StateGraph(MessagesState)
 workflow.add_node("agent", chatbot_node)
 workflow.add_node("sql_tools", tool_node)
 workflow.add_node("saldos_tool_node", saldos_tool_node)
+workflow.add_node("deudas_tool_node", deudas_tool_node)
 
 # el nodo inicial es el agente
 workflow.add_edge(START, "agent")
@@ -106,12 +111,14 @@ workflow.add_conditional_edges("agent", route_after_agent,
                                {
         "sql_tools": "sql_tools",
         "saldos_tool_node": "saldos_tool_node",
+        "deudas_tool_node": "deudas_tool_node",
         END: END
     })
 
 # siempre volvemos al agente
 workflow.add_edge("sql_tools", "agent")
 workflow.add_edge("saldos_tool_node", "agent")
+workflow.add_edge("deudas_tool_node", "agent")
 
 # ==========================================
 # compilamos el grafo para que sea ejecutable

@@ -3,19 +3,72 @@ import os
 import datetime as dt
 from langchain_core.tools import tool
 
-# ==========================================
-# Tool 1.
-# ==========================================
-@tool
-def registrar_gasto(concepto: str, monto: float, medio: str) -> str:
-    """
-    Registra un nuevo gasto en la base de datos local.
-    Es la herramienta principal para llevar el control de gastos personal.
+DB_PATH = 'data/finanzas.db'
+
+# Funciones auxiliares
+
+def _actualizar_presupuesto_logic(monto_a_restar: float) -> str:
+    """Lógica interna para restar del presupuesto semanal"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Primero obtenemos el presupuesto actual para restarle
+        cursor.execute("SELECT Monto FROM presupuesto")
+        actual = cursor.fetchone()[0]
+        nuevo_monto = actual - monto_a_restar
+        
+        cursor.execute("UPDATE presupuesto SET Monto = ?", (nuevo_monto,))
+        conn.commit()
+        conn.close()
+        return f"Presupuesto actualizado. Restante: ${nuevo_monto}."
+    except Exception as e:
+        return f"Error al actualizar presupuesto: {e}"
     
+def _actualizar_adeudos_logic(monto_a_restar: float, medio: str) -> str:
+    """Lógica interna para restar del monto de una deuda específica"""
+    if not os.path.exists(DB_PATH):
+        return "Error: DB no existe."
+    
+    # Validamos el medio para evitar alucinaciones
+    if medio.lower().__contains__('bbva'):
+        medio = 'BBVA Crédito'
+    elif medio.lower().__contains__('nu'):
+        medio = 'Nu Crédito'
+    elif medio.lower().__contains__('stori'):
+        medio = 'Stori Crédito'
+    elif medio.lower().__contains__('mp'):
+        medio = 'MP Crédito'
+    else:
+        return f"Error: Medio '{medio}' no reconocido. Por favor, usa un medio válido como 'BBVA Crédito', 'Nu Crédito', 'Stori Crédito' o 'MP Crédito'."
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Primero obtenemos el monto actual de la deuda para restarle
+        cursor.execute("SELECT Monto FROM deudas WHERE Medio = ?", (medio,))
+        resultado = cursor.fetchone()
+        if resultado is None:
+            return f"Error: No se encontró una deuda con el medio '{medio}'."
+        
+        actual = resultado[0]
+        nuevo_monto = actual - monto_a_restar
+        
+        cursor.execute("UPDATE deudas SET Monto = ? WHERE Medio = ?", (nuevo_monto, medio))
+        conn.commit()
+        conn.close()
+        return f"Deuda '{medio}' actualizada. Restante: ${nuevo_monto}."
+    except Exception as e:
+        return f"Error al actualizar deuda: {e}"
+    
+
+def reestablecer_presupuesto_semanal(presupuesto_inicial: float) -> str:
+    """
+    Reestablece el presupuesto semanal al monto inicial definido en la base de datos local.
+    Esta función se ejecuta automáticamente cada semana para asegurar que el presupuesto se reinicie y el usuario pueda comenzar con un nuevo ciclo de gastos.
     Args:
-        concepto (str): Una breve descripción del gasto (ej. 'Compra de materiales', 'Pago de servicios').
-        monto (float): El monto del gasto en dólares.
-        medio (str): El medio de pago utilizado (ej. 'Tarjeta de crédito', 'Efectivo').
+        presupuesto_inicial (float): El monto inicial del presupuesto semanal definido por el usuario
     """
     
     db_path = 'data/finanzas.db'
@@ -27,19 +80,41 @@ def registrar_gasto(concepto: str, monto: float, medio: str) -> str:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
+        # actualizar el presupuesto semanal al monto inicial
+        cursor.execute("UPDATE presupuesto SET Monto = ?", (presupuesto_inicial,))
+        conn.commit()
+        conn.close()
+        return f"Presupuesto semanal reestablecido exitosamente a ${presupuesto_inicial} el {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}."    
+    except sqlite3.Error as e:
+        return f"Error al reestablecer el presupuesto en la base de datos: {str(e)}"
+
+
+# ==========================================
+# Tool 1.
+# ==========================================
+@tool
+def registrar_gasto(concepto: str, monto: float, medio: str) -> str:
+    """Registra un gasto y descuenta del presupuesto semanal."""
+    if not os.path.exists(DB_PATH):
+        return "Error: DB no existe."
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         fecha_actual = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
         cursor.execute("INSERT INTO gastos (Concepto, Monto, Medio, Fecha) VALUES (?, ?, ?, ?)", 
                        (concepto, monto, medio, fecha_actual))
         conn.commit()
         conn.close()
+
+        # LLAMAMOS A LA LÓGICA, NO A LA TOOL
+        res_presupuesto = _actualizar_presupuesto_logic(monto)
+        res_adeudo = _actualizar_adeudos_logic(monto, medio)
         
-        return f"Gasto registrado exitosamente: {concepto} por ${monto} pagado con {medio} el {fecha_actual}. Recuerda responder con el dinero disponible para la semana."
-    
+        return f"Gasto guardado: {concepto} (${monto}). {res_presupuesto} {res_adeudo}"
     except sqlite3.Error as e:
-        return f"Error al registrar el gasto en la base de datos: {str(e)}"
-
-
+        return f"Error DB: {str(e)}"
+    
 # ==========================================
 # Tool 2.
 # ==========================================
@@ -75,39 +150,22 @@ def actualizar_saldos(nuevos_saldos: dict) -> str:
     except sqlite3.Error as e:
         return f"Error al actualizar los saldos en la base de datos: {str(e)}"
 
+
 # ==========================================
 # Tool 3.
 # ==========================================
 @tool
-def actualizar_presupuesto(monto: float) -> str:
-    """
-    Actualiza el presupuesto semanal en la base de datos local.
-    Es útil para ajustar el presupuesto disponible después de registrar gastos o cambios en los ingresos.
-    
-    Args:
-        monto (float): El nuevo monto del presupuesto semanal en dólares.
-    """
-    
-    db_path = 'data/finanzas.db'
-    
-    if not os.path.exists(db_path):
-        return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
-    
+def actualizar_presupuesto(monto_total: float) -> str:
+    """Establece un nuevo monto TOTAL para el presupuesto semanal."""
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        fecha_actual = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        cursor.execute("UPDATE presupuesto SET Monto = ? WHERE Id = 1", (monto,))
-        
+        cursor.execute("UPDATE presupuesto SET Monto = ?", (monto_total,))
         conn.commit()
         conn.close()
-        
-        return f"Presupuesto semanal actualizado exitosamente a ${monto} el {fecha_actual}."
-    
+        return f"Presupuesto total ajustado a ${monto_total}."
     except sqlite3.Error as e:
-        return f"Error al actualizar el presupuesto en la base de datos: {str(e)}"
-
+        return f"Error: {e}"
     
 
 # ==========================================
@@ -135,6 +193,11 @@ def obtener_saldos() -> dict:
         
         cursor.execute("SELECT Nombre, Saldo FROM saldos")
         resultados = cursor.fetchall()
+        cursor.execute("SELECT Monto FROM presupuesto")
+        presupuesto_result = cursor.fetchone()
+        if presupuesto_result:
+            presupuesto_actual = presupuesto_result[0]
+            resultados.append(("Presupuesto Semanal", presupuesto_actual))
         conn.close()
         
         saldos = {nombre: saldo for nombre, saldo in resultados}
@@ -162,6 +225,18 @@ def actualizar_deuda(monto: float, medio: str) -> str:
     if not os.path.exists(db_path):
         return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
     
+    # Vamos a prevenir alucionaciones validando el medio
+    if medio.lower().__contains__('bbva'):
+        medio = 'BBVA Crédito'
+    elif medio.lower().__contains__('nu'):
+        medio = 'Nu Crédito'
+    elif medio.lower().__contains__('stori'):
+        medio = 'Stori Crédito'
+    elif medio.lower().__contains__('mp'):
+        medio = 'MP Crédito'
+    else:
+        return f"Error: Medio '{medio}' no reconocido. Por favor, usa un medio válido como 'BBVA Crédito', 'Nu Crédito', 'Stori Crédito' o 'MP Crédito'."
+    
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -176,3 +251,36 @@ def actualizar_deuda(monto: float, medio: str) -> str:
     
     except sqlite3.Error as e:
         return f"Error al actualizar la deuda en la base de datos: {str(e)}"
+    
+# ==========================================
+# Tool 6.
+# ==========================================
+@tool
+def obtener_deudas() -> dict:
+    """
+    Obtiene los montos actuales de las deudas desde la base de datos local.
+    Es útil para mostrar al usuario el estado actual de sus deudas antes de realizar pagos o incurrir en nuevas deudas.
+    
+    Returns:
+        dict: Un diccionario con el medio como clave y el monto de la deuda como valor. 
+              Ejemplo: {'Tarjeta de crédito': 2000.00, 'Préstamo personal': 5000.00}
+    """
+    
+    db_path = 'data/finanzas.db'
+    
+    if not os.path.exists(db_path):
+        return {"error": "La base de datos no existe. Por favor, ejecuta el script de configuración primero."}
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT Medio, Monto FROM deudas")
+        resultados = cursor.fetchall()
+        conn.close()
+        
+        deudas = {medio: monto for medio, monto in resultados}
+        return deudas
+    
+    except sqlite3.Error as e:
+        return {"error": f"Error al obtener las deudas de la base de datos: {str(e)}"}
