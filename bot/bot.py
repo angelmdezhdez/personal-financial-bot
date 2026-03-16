@@ -55,7 +55,9 @@ async def chatbot_node(state: MessagesState):
         Tienes acceso a bases de datos de gastos, saldos y presupuesto.
         Usa las herramientas a tu disposición para responder a las solicitudes del usuario.
         Si no sabes la respuesta o la herramienta falla, admítelo y pide aclaraciones.
-        La fecha actual es {fecha_hoy}.""")
+        La fecha actual es {fecha_hoy}.
+        Tu respuesta es enviada a través de un bot de telegram, así que hazla clara, concisa y con un formato apropiado.
+        Si se trata de una consulta sobre adeudos, recuerda que el monto devuelto por la herramienta es el adeudo del medio, no el saldo en el medio.""")
     ] + state["messages"]
     
     # invocamos al modelo con tools
