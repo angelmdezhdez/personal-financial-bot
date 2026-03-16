@@ -24,7 +24,10 @@ from bot.tools import (
 tools_compras = [registrar_gasto, actualizar_presupuesto, actualizar_deuda]
 TOOLS_COMPRAS_NAMES = [tool.name for tool in tools_compras]
 tools_saldos = [obtener_saldos, actualizar_saldos]
+TOOLS_SALDOS_NAMES = [tool.name for tool in tools_saldos]
 tools_deudas = [obtener_deudas]
+TOOLS_DEUDAS_NAMES = [tool.name for tool in tools_deudas]
+
 
 # tools son herramientas "genéricas" que el agente puede usar
 tools = tools_compras + tools_saldos + tools_deudas
@@ -94,9 +97,21 @@ def route_after_agent(state: MessagesState):
     is_about_compras = any(
         nombre in TOOLS_COMPRAS_NAMES for nombre in nombres_herramientas
     )
+    is_about_saldos = any(
+        nombre in TOOLS_SALDOS_NAMES for nombre in nombres_herramientas
+    )
+    is_about_deudas = any(
+        nombre in TOOLS_DEUDAS_NAMES for nombre in nombres_herramientas
+    )
+
     if is_about_compras:
         return "sql_tools"
-    return "saldos_tool_node"
+    elif is_about_saldos:
+        return "saldos_tool_node"
+    elif is_about_deudas:
+        return "deudas_tool_node"
+    else:
+        return END
 
 # definimos el grafo de estados
 workflow = StateGraph(MessagesState)
