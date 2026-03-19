@@ -109,8 +109,11 @@ def registrar_gasto(concepto: str, monto: float, medio: str) -> str:
 
         # LLAMAMOS A LA LÓGICA, NO A LA TOOL
         res_presupuesto = _actualizar_presupuesto_logic(monto)
-        res_adeudo = _actualizar_adeudos_logic(monto, medio)
-        
+        if medio.lower().__contains__('transferencia') or medio.lower().__contains__('efectivo'):
+            res_adeudo = "Por ser un gasto en efectivo o transferencia, no se actualizan adeudos."
+        else:
+            res_adeudo = _actualizar_adeudos_logic(monto, medio)
+
         return f"Gasto guardado: {concepto} (${monto}). {res_presupuesto} {res_adeudo}"
     except sqlite3.Error as e:
         return f"Error DB: {str(e)}"

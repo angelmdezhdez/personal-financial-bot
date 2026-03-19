@@ -57,6 +57,7 @@ async def callback_presupuesto(context: ContextTypes.DEFAULT_TYPE):
     # Llamamos a tu función de tools
     resultado = reestablecer_presupuesto_semanal(400.0)
     logging.info(f"Tarea programada ejecutada: {resultado}")
+    await context.bot.send_message(chat_id=TELEGRAM_USER_ID, text=f"🔄 Presupuesto semanal reestablecido: {resultado}")
 
 def main():
     if not TELEGRAM_BOT_TOKEN:
@@ -66,7 +67,7 @@ def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     # Crear horario
-    hora = time(hour=6, minute=5)
+    hora = time(hour=1, minute=15)
 
     # Programar el job
     application.job_queue.run_daily(
