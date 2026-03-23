@@ -25,8 +25,8 @@ def _actualizar_presupuesto_logic(monto_a_restar: float) -> str:
     except Exception as e:
         return f"Error al actualizar presupuesto: {e}"
     
-def _actualizar_adeudos_logic(monto_a_restar: float, medio: str) -> str:
-    """Lógica interna para restar del monto de una deuda específica"""
+def _actualizar_adeudos_logic(monto_a_sumar: float, medio: str) -> str:
+    """Lógica interna para sumar al monto de una deuda específica"""
     if not os.path.exists(DB_PATH):
         return "Error: DB no existe."
     
@@ -46,19 +46,19 @@ def _actualizar_adeudos_logic(monto_a_restar: float, medio: str) -> str:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Primero obtenemos el monto actual de la deuda para restarle
+        # Primero obtenemos el monto actual de la deuda para sumarle
         cursor.execute("SELECT Monto FROM deudas WHERE Medio = ?", (medio,))
         resultado = cursor.fetchone()
         if resultado is None:
             return f"Error: No se encontró una deuda con el medio '{medio}'."
         
         actual = resultado[0]
-        nuevo_monto = actual - monto_a_restar
+        nuevo_monto = actual + monto_a_sumar
         
         cursor.execute("UPDATE deudas SET Monto = ? WHERE Medio = ?", (nuevo_monto, medio))
         conn.commit()
         conn.close()
-        return f"Deuda '{medio}' actualizada. Restante: ${nuevo_monto}."
+        return f"Deuda '{medio}' actualizada. Nuevo monto: ${nuevo_monto}."
     except Exception as e:
         return f"Error al actualizar deuda: {e}"
     
