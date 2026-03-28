@@ -59,23 +59,25 @@ async def callback_presupuesto(context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"Tarea programada ejecutada: {resultado}")
     await context.bot.send_message(chat_id=TELEGRAM_USER_ID, text=f"🔄 Presupuesto semanal reestablecido: {resultado}")
 
+async def startup(application):
+    await application.bot.send_message(
+        chat_id=TELEGRAM_USER_ID,
+        text="✅ Bot iniciado."
+    )
+
 def main():
     if not TELEGRAM_BOT_TOKEN:
         return
 
-    # 1. Construir la aplicación con JobQueue habilitado
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-    # Crear horario
-    hora = time(hour=1, minute=15)
-
-    # Programar el job
-    application.job_queue.run_daily(
-        callback_presupuesto,
-        time=hora,
-        days=(6,)   # domingo
+    # Construir la aplicación con JobQueue habilitado
+    application = (
+    Application.builder()
+    .token(TELEGRAM_BOT_TOKEN)
+    .post_init(startup)
+    .build()
     )
 
+    # Procesar mensajes de texto
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_mensaje))
     
     print("🚀 Bot con tareas programadas en marcha...")
