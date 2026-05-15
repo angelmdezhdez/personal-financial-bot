@@ -1,16 +1,18 @@
+from dotenv import load_dotenv
+load_dotenv()  
 import sqlite3
 import os
 import datetime as dt
 from langchain_core.tools import tool
 
-DB_PATH = 'data/finanzas.db'
+db_path = os.getenv("DB_PATH")
 
 # Funciones auxiliares
 
 def _actualizar_presupuesto_logic(monto_a_restar: float) -> str:
     """Lógica interna para restar del presupuesto semanal"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # Primero obtenemos el presupuesto actual para restarle
@@ -27,7 +29,7 @@ def _actualizar_presupuesto_logic(monto_a_restar: float) -> str:
     
 def _actualizar_adeudos_logic(monto_a_sumar: float, medio: str) -> str:
     """Lógica interna para sumar al monto de una deuda específica"""
-    if not os.path.exists(DB_PATH):
+    if not os.path.exists(db_path):
         return "Error: DB no existe."
     
     # Validamos el medio para evitar alucinaciones
@@ -43,7 +45,7 @@ def _actualizar_adeudos_logic(monto_a_sumar: float, medio: str) -> str:
         return f"Error: Medio '{medio}' no reconocido. Por favor, usa un medio válido como 'BBVA Crédito', 'Nu Crédito', 'Stori Crédito' o 'MP Crédito'."
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # Primero obtenemos el monto actual de la deuda para sumarle
@@ -71,7 +73,7 @@ def reestablecer_presupuesto_semanal(presupuesto_inicial: float) -> str:
         presupuesto_inicial (float): El monto inicial del presupuesto semanal definido por el usuario
     """
     
-    db_path = 'data/finanzas.db'
+    db_path = os.getenv("DB_PATH")
     
     if not os.path.exists(db_path):
         return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
@@ -95,11 +97,11 @@ def reestablecer_presupuesto_semanal(presupuesto_inicial: float) -> str:
 @tool
 def registrar_gasto(concepto: str, monto: float, medio: str) -> str:
     """Registra un gasto y descuenta del presupuesto semanal."""
-    if not os.path.exists(DB_PATH):
+    if not os.path.exists(db_path):
         return "Error: DB no existe."
     
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         fecha_actual = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("INSERT INTO gastos (Concepto, Monto, Medio, Fecha) VALUES (?, ?, ?, ?)", 
@@ -126,7 +128,7 @@ def actualizar_saldos(nuevos_saldos: dict) -> str:
     """
     Actualiza los saldos de las cuentas en la base de datos local.
     """
-    db_path = 'data/finanzas.db'
+    db_path = os.getenv("DB_PATH")
     if not os.path.exists(db_path):
         return "Error: La base de datos no existe."
 
@@ -183,7 +185,7 @@ def actualizar_saldos(nuevos_saldos: dict) -> str:
 def actualizar_presupuesto(monto_total: float) -> str:
     """Establece un nuevo monto TOTAL para el presupuesto semanal."""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("UPDATE presupuesto SET Monto = ?", (monto_total,))
         conn.commit()
@@ -207,7 +209,7 @@ def obtener_saldos() -> dict:
               Ejemplo: {'Cuenta Ahorros': 1500.00, 'Cuenta Corriente': 500.00}
     """
     
-    db_path = 'data/finanzas.db'
+    db_path = os.getenv("DB_PATH")
     
     if not os.path.exists(db_path):
         return {"error": "La base de datos no existe. Por favor, ejecuta el script de configuración primero."}
@@ -245,7 +247,7 @@ def actualizar_deuda(monto: float, medio: str) -> str:
         medio (str): El medio relacionado con la deuda (ej. 'Tarjeta de crédito', 'Préstamo personal').
     """
     
-    db_path = 'data/finanzas.db'
+    db_path = os.getenv("DB_PATH")
     
     if not os.path.exists(db_path):
         return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
@@ -291,7 +293,7 @@ def obtener_deudas() -> dict:
               Ejemplo: {'Tarjeta de crédito': 2000.00, 'Préstamo personal': 5000.00}
     """
     
-    db_path = 'data/finanzas.db'
+    db_path = os.getenv("DB_PATH")
     
     if not os.path.exists(db_path):
         return {"error": "La base de datos no existe. Por favor, ejecuta el script de configuración primero."}

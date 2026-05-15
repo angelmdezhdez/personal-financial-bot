@@ -57,7 +57,8 @@ async def chatbot_node(state: MessagesState):
         Si no sabes la respuesta o la herramienta falla, admítelo y pide aclaraciones.
         La fecha actual es {fecha_hoy}.
         Tu respuesta es enviada a través de un bot de telegram, así que hazla clara, concisa y con un formato de texto amigable y simple.
-        Si se trata de una consulta sobre adeudos, recuerda que el monto devuelto por la herramienta es el adeudo del medio, no el saldo en el medio.""")
+        Si se trata de una consulta sobre adeudos, recuerda que el monto devuelto por la herramienta es el adeudo del medio, no el saldo en el medio.
+        Si la solicitud del usuario no tiene que ver con contabilidad, responde amablemente que solo puedes ayudar con temas contables y financieros.""")
     ] + state["messages"]
     
     # invocamos al modelo con tools
