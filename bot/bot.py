@@ -14,7 +14,8 @@ from bot.tools import (
     actualizar_presupuesto,
     obtener_saldos,
     actualizar_deuda,
-    obtener_deudas
+    obtener_deudas, 
+    modificar_gasto
 )
 
 # ==========================================
@@ -25,7 +26,7 @@ tools_compras = [registrar_gasto, actualizar_presupuesto, actualizar_deuda]
 TOOLS_COMPRAS_NAMES = [tool.name for tool in tools_compras]
 tools_saldos = [obtener_saldos, actualizar_saldos]
 TOOLS_SALDOS_NAMES = [tool.name for tool in tools_saldos]
-tools_deudas = [obtener_deudas]
+tools_deudas = [obtener_deudas, modificar_gasto]
 TOOLS_DEUDAS_NAMES = [tool.name for tool in tools_deudas]
 
 
@@ -58,7 +59,7 @@ async def chatbot_node(state: MessagesState):
         La fecha actual es {fecha_hoy}.
         Tu respuesta es enviada a través de un bot de telegram, así que hazla clara, concisa y con un formato de texto amigable y simple.
         Si se trata de una consulta sobre adeudos, recuerda que el monto devuelto por la herramienta es el adeudo del medio, no el saldo en el medio.
-        Si la solicitud del usuario no tiene que ver con contabilidad, responde amablemente que solo puedes ayudar con temas contables y financieros.""")
+        Si la solicitud del usuario no tiene que ver con contabilidad, responde amablemente que solo puedes ayudar con temas contables y financieros y no sugieras nada más.""")
     ] + state["messages"]
     
     # invocamos al modelo con tools

@@ -311,3 +311,50 @@ def obtener_deudas() -> dict:
     
     except sqlite3.Error as e:
         return {"error": f"Error al obtener las deudas de la base de datos: {str(e)}"}
+    
+# ==========================================
+# Tool 7.
+# ==========================================
+@tool
+def modificar_gasto(fecha: str, concepto: str, nuevo_monto: float, nuevo_concepto: str, nuevo_medio: str) -> str:
+    """
+    Modifica un gasto existente en la base de datos local.
+    Es útil para corregir errores al registrar un gasto o para actualizar la información de un gasto después de que se haya registrado.
+    
+    Args:
+        fecha (str): La fecha del gasto a modificar (en formato 'YYYY-MM-DD').
+        concepto (str): El concepto del gasto a modificar.
+        nuevo_monto (float): El nuevo monto del gasto. Si no deseas cambiar el monto, ingresa el mismo monto que el gasto original.
+        nuevo_concepto (str): El nuevo concepto del gasto. Si no deseas cambiar el concepto, ingresa el mismo concepto que el gasto original.
+        nuevo_medio (str): El nuevo medio relacionado con el gasto. Si no deseas cambiar el medio, ingresa el mismo medio que el gasto original.
+    """
+    
+    db_path = os.getenv("DB_PATH")
+    
+    if not os.path.exists(db_path):
+        return "Error: La base de datos no existe. Por favor, ejecuta el script de configuración primero."
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Verificamos si el gasto existe
+        cursor.execute("SELECT Monto, Concepto, Medio FROM gastos WHERE Fecha = ? AND Concepto = ?", (fecha, concepto))
+        resultado = cursor.fetchone()
+        
+        if not resultado:
+            return f"Error: No se encontró un gasto con la fecha '{fecha}' y concepto '{concepto}'."
+        
+        monto_anterior, concepto_anterior, medio_anterior = resultado
+
+        # Actualizamos el gasto con la nueva información
+        cursor.execute("UPDATE gastos SET Monto = ?, Concepto = ?, Medio = ? WHERE Fecha = ? AND Concepto = ?", 
+                       (nuevo_monto, nuevo_concepto, nuevo_medio, fecha, concepto))
+        
+        conn.commit()
+        conn.close()
+        
+        return f"Gasto actualizado exitosamente el {fecha}."
+    
+    except sqlite3.Error as e:
+        return f"Error al modificar el gasto en la base de datos: {str(e)}"
